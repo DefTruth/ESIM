@@ -1,18 +1,19 @@
-'''
+"""
 Created on July 20, 2018
 @author : hsiaoyetgun (yqxiao)
-'''
+"""
 # coding: utf-8
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from Model import ESIM
-import os
-from Utils import *
 import sys
 from datetime import datetime
+
 import Config
+from Model import ESIM
+from Utils import *
+
 
 # os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
@@ -27,6 +28,7 @@ def feed_data(premise, premise_mask, hypothesis, hypothesis_mask, y_batch,
                  model.dropout_keep_prob: dropout_keep_prob}
     return feed_dict
 
+
 # evaluate current model on devset
 def evaluate(sess, premise, premise_mask, hypothesis, hypothesis_mask, y):
     batches = next_batch(premise, premise_mask, hypothesis, hypothesis_mask, y)
@@ -40,6 +42,7 @@ def evaluate(sess, premise, premise_mask, hypothesis, hypothesis_mask, y):
         total_loss += loss * batch_nums
         total_acc += acc * batch_nums
     return total_loss / data_nums, total_acc / data_nums
+
 
 # training
 def train():
@@ -70,7 +73,7 @@ def train():
 
     # init
     sess = tf.Session()
-    sess.run(tf.global_variables_initializer(), {model.embed_matrix : embeddings})
+    sess.run(tf.global_variables_initializer(), {model.embed_matrix: embeddings})
 
     # count trainable parameters
     total_parameters = count_parameters()
@@ -104,12 +107,12 @@ def train():
                 loss_val, acc_val = evaluate(sess, premise_dev, premise_mask_dev, hypothesis_dev, hypothesis_mask_dev, y_dev)
 
                 # save model
-                saver.save(sess = sess, save_path = arg.save_path + '_dev_loss_{:.4f}.ckpt'.format(loss_val))
+                saver.save(sess=sess, save_path=arg.save_path + '_dev_loss_{:.4f}.ckpt'.format(loss_val))
                 # save best model
                 if acc_val > best_acc_val:
                     best_acc_val = acc_val
                     last_improved_batch = total_batch
-                    saver.save(sess = sess, save_path = arg.best_path)
+                    saver.save(sess=sess, save_path=arg.best_path)
                     improved_flag = '*'
                 else:
                     improved_flag = ''
@@ -122,7 +125,7 @@ def train():
             total_batch += 1
             # early stop judge
             if total_batch - last_improved_batch > arg.early_stop_step:
-                print_log('No optimization for a long time, auto-stopping ...', file = log)
+                print_log('No optimization for a long time, auto-stopping ...', file=log)
                 isEarlyStop = True
                 break
         if isEarlyStop:
@@ -131,7 +134,8 @@ def train():
         time_diff = get_time_diff(start_time)
         total_loss, total_acc = total_loss / data_nums, total_acc / data_nums
         msg = '** Epoch : {0:>2} finished, Train Loss : {1:>6.2}, Train Acc : {2:6.2%}, Time : {3}'
-        print_log(msg.format(epoch + 1, total_loss, total_acc, time_diff), file = log)
+        print_log(msg.format(epoch + 1, total_loss, total_acc, time_diff), file=log)
+
 
 if __name__ == '__main__':
     # read config
@@ -155,11 +159,11 @@ if __name__ == '__main__':
     dt = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
     arg.log_path = 'config/log/log.{}'.format(dt)
     log = open(arg.log_path, 'w')
-    print_log('CMD : python3 {0}'.format(' '.join(sys.argv)), file = log)
-    print_log('Training with following options :', file = log)
+    print_log('CMD : python3 {0}'.format(' '.join(sys.argv)), file=log)
+    print_log('Training with following options :', file=log)
     print_args(arg, log)
 
-    model = ESIM(arg.seq_length, arg.n_vocab, arg.embedding_size, arg.hidden_size, arg.attention_size, arg.n_classes,\
+    model = ESIM(arg.seq_length, arg.n_vocab, arg.embedding_size, arg.hidden_size, arg.attention_size, arg.n_classes, \
                  arg.batch_size, arg.learning_rate, arg.optimizer, arg.l2, arg.clip_value)
     train()
     log.close()

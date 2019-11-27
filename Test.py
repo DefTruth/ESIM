@@ -1,20 +1,23 @@
-'''
+"""
 Created on July 20, 2018
 @author : hsiaoyetgun (yqxiao)
-'''
+"""
 # coding: utf-8
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from datetime import datetime
-from Utils import *
-import tensorflow as tf
-import numpy as np
 import sys
+from datetime import datetime
+
+import numpy as np
+import tensorflow as tf
 from sklearn.metrics import f1_score
-from Model import ESIM
+
 import Config
+from Model import ESIM
+from Utils import *
+
 
 # testing
 def predict():
@@ -44,7 +47,7 @@ def predict():
                          model.hypothesis: batch_hypothesis_test,
                          model.hypothesis_mask: batch_hypothesis_mask_test,
                          model.dropout_keep_prob: 1.0}
-            logits = sess.run([model.logits], feed_dict = feed_dict)
+            logits = sess.run([model.logits], feed_dict=feed_dict)
             logits = np.array(logits)
             logits = logits.reshape([-1, logits.shape[-1]])
             y_pred.extend(logits)
@@ -64,6 +67,7 @@ def predict():
         time_diff = get_time_diff(start_time)
         print('Time usage: ', time_diff, '\n')
 
+
 if __name__ == '__main__':
     # read config
     config = Config.ModelConfig()
@@ -71,7 +75,7 @@ if __name__ == '__main__':
 
     vocab_dict = load_vocab(arg.vocab_path)
     arg.vocab_dict_size = len(vocab_dict)
-    index2word = {index : word for word, index in vocab_dict.items()}
+    index2word = {index: word for word, index in vocab_dict.items()}
 
     if arg.embedding_path:
         embeddings = load_embeddings(arg.embedding_path, vocab_dict)
@@ -91,7 +95,7 @@ if __name__ == '__main__':
     print_log('Testing with following options :', file=log)
     print_args(arg, log)
 
-    model = ESIM(arg.seq_length, arg.n_vocab, arg.embedding_size, arg.hidden_size, arg.attention_size, arg.n_classes, \
+    model = ESIM(arg.seq_length, arg.n_vocab, arg.embedding_size, arg.hidden_size, arg.attention_size, arg.n_classes,
                  arg.batch_size, arg.learning_rate, arg.optimizer, arg.l2, arg.clip_value)
     predict()
     log.close()

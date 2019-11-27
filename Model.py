@@ -10,12 +10,31 @@ from __future__ import print_function
 
 import tensorflow as tf
 from tensorflow.contrib.rnn import LSTMCell, DropoutWrapper
+
 from Utils import print_shape
 
+
 class ESIM(object):
-    def __init__(self, seq_length, n_vocab, embedding_size, hidden_size, attention_size, n_classes, batch_size, learning_rate, optimizer, l2, clip_value):
+    def __init__(self,
+                 seq_length,
+                 n_vocab,
+                 embedding_size,
+                 hidden_size,
+                 attention_size,
+                 n_classes,
+                 batch_size,
+                 learning_rate,
+                 optimizer, l2, clip_value):
         # model init
-        self._parameter_init(seq_length, n_vocab, embedding_size, hidden_size, attention_size, n_classes, batch_size, learning_rate, optimizer, l2, clip_value)
+        self._parameter_init(seq_length,
+                             n_vocab,
+                             embedding_size,
+                             hidden_size,
+                             attention_size,
+                             n_classes,
+                             batch_size,
+                             learning_rate,
+                             optimizer, l2, clip_value)
         self._placeholder_init()
 
         # model operation
@@ -27,7 +46,16 @@ class ESIM(object):
         tf.add_to_collection('train_mini', self.train)
 
     # init hyper-parameters
-    def _parameter_init(self, seq_length, n_vocab, embedding_size, hidden_size, attention_size, n_classes, batch_size, learning_rate, optimizer, l2, clip_value):
+    def _parameter_init(self,
+                        seq_length,
+                        n_vocab,
+                        embedding_size,
+                        hidden_size,
+                        attention_size,
+                        n_classes,
+                        batch_size,
+                        learning_rate,
+                        optimizer, l2, clip_value):
         """
         :param seq_length: max sentence length
         :param n_vocab: word nums in vocabulary
@@ -79,35 +107,36 @@ class ESIM(object):
         return logits
 
     # feed forward unit
-    def _feedForwardBlock(self, inputs, hidden_dims, num_units, scope, isReuse = False, initializer = None):
+    def _feedForwardBlock(self, inputs, hidden_dims, num_units,
+                          scope, isReuse=False, initializer=None):
         """
         :param inputs: tensor with shape (batch_size, 4 * 2 * hidden_size)
         :param scope: scope name
         :return: output: tensor with shape (batch_size, num_units)
         """
-        with tf.variable_scope(scope, reuse = isReuse):
+        with tf.variable_scope(scope, reuse=isReuse):
             if initializer is None:
                 initializer = tf.random_normal_initializer(0.0, 0.1)
 
             with tf.variable_scope('feed_foward_layer1'):
                 inputs = tf.nn.dropout(inputs, self.dropout_keep_prob)
-                outputs = tf.layers.dense(inputs, hidden_dims, tf.nn.relu, kernel_initializer = initializer)
+                outputs = tf.layers.dense(inputs, hidden_dims, tf.nn.relu, kernel_initializer=initializer)
             with tf.variable_scope('feed_foward_layer2'):
                 outputs = tf.nn.dropout(outputs, self.dropout_keep_prob)
-                results = tf.layers.dense(outputs, num_units, tf.nn.tanh, kernel_initializer = initializer)
+                results = tf.layers.dense(outputs, num_units, tf.nn.tanh, kernel_initializer=initializer)
                 return results
 
     # biLSTM unit
-    def _biLSTMBlock(self, inputs, num_units, scope, seq_len = None, isReuse = False):
-        with tf.variable_scope(scope, reuse = isReuse):
-            lstmCell = LSTMCell(num_units = num_units)
-            dropLSTMCell = lambda: DropoutWrapper(lstmCell, output_keep_prob = self.dropout_keep_prob)
+    def _biLSTMBlock(self, inputs, num_units, scope, seq_len=None, isReuse=False):
+        with tf.variable_scope(scope, reuse=isReuse):
+            lstmCell = LSTMCell(num_units=num_units)
+            dropLSTMCell = lambda: DropoutWrapper(lstmCell, output_keep_prob=self.dropout_keep_prob)
             fwLSTMCell, bwLSTMCell = dropLSTMCell(), dropLSTMCell()
-            output = tf.nn.bidirectional_dynamic_rnn(cell_fw = fwLSTMCell,
-                                                     cell_bw = bwLSTMCell,
-                                                     inputs = inputs,
-                                                     sequence_length = seq_len,
-                                                     dtype = tf.float32)
+            output = tf.nn.bidirectional_dynamic_rnn(cell_fw=fwLSTMCell,
+                                                     cell_bw=bwLSTMCell,
+                                                     inputs=inputs,
+                                                     sequence_length=seq_len,
+                                                     dtype=tf.float32)
             return output
 
     # input encoding block ("3.1 Input Encoding" in paper)
@@ -133,8 +162,8 @@ class ESIM(object):
             outputsPremise, finalStatePremise = self._biLSTMBlock(self.embeded_left, self.hidden_size,
                                                                   'biLSTM', self.premise_mask)
             outputsHypothesis, finalStateHypothesis = self._biLSTMBlock(self.embeded_right, self.hidden_size,
-                                                              'biLSTM', self.hypothesis_mask,
-                                                              isReuse = True)
+                                                                        'biLSTM', self.hypothesis_mask,
+                                                                        isReuse=True)
 
             a_bar = tf.concat(outputsPremise, axis=2)
             b_bar = tf.concat(outputsHypothesis, axis=2)
@@ -186,8 +215,8 @@ class ESIM(object):
 
             # m_a = [a_bar, a_hat, a_bar - a_hat, a_bar 'dot' a_hat] (14)
             # m_b = [b_bar, b_hat, b_bar - b_hat, b_bar 'dot' b_hat] (15)
-            m_a = tf.concat([a_bar, a_hat, a_diff, a_mul], axis = 2)
-            m_b = tf.concat([b_bar, b_hat, b_diff, b_mul], axis = 2)
+            m_a = tf.concat([a_bar, a_hat, a_diff, a_mul], axis=2)
+            m_b = tf.concat([b_bar, b_hat, b_diff, b_mul], axis=2)
             print_shape('m_a', m_a)
             print_shape('m_b', m_b)
             return m_a, m_b
@@ -210,24 +239,24 @@ class ESIM(object):
         """
         with tf.variable_scope(scope):
             outputV_a, finalStateV_a = self._biLSTMBlock(m_a, hiddenSize, 'biLSTM')
-            outputV_b, finalStateV_b = self._biLSTMBlock(m_b, hiddenSize, 'biLSTM', isReuse = True)
-            v_a = tf.concat(outputV_a, axis = 2)
-            v_b = tf.concat(outputV_b, axis = 2)
+            outputV_b, finalStateV_b = self._biLSTMBlock(m_b, hiddenSize, 'biLSTM', isReuse=True)
+            v_a = tf.concat(outputV_a, axis=2)
+            v_b = tf.concat(outputV_b, axis=2)
 
             print_shape('v_a', v_a)
             print_shape('v_b', v_b)
 
             # v_{a,avg} = \sum_{i=1}^l_a \frac{v_a,i}{l_a}, v_{a,max} = \max_{i=1} ^ l_a v_{a,i} (18)
             # v_{b,avg} = \sum_{j=1}^l_b \frac{v_b,j}{l_b}, v_{b,max} = \max_{j=1} ^ l_b v_{b,j} (19)
-            v_a_avg = tf.reduce_mean(v_a, axis = 1)
-            v_b_avg = tf.reduce_mean(v_b, axis = 1)
-            v_a_max = tf.reduce_max(v_a, axis = 1)
-            v_b_max = tf.reduce_max(v_b, axis = 1)
+            v_a_avg = tf.reduce_mean(v_a, axis=1)
+            v_b_avg = tf.reduce_mean(v_b, axis=1)
+            v_a_max = tf.reduce_max(v_a, axis=1)
+            v_b_max = tf.reduce_max(v_b, axis=1)
             print_shape('v_a_avg', v_a_avg)
             print_shape('v_a_max', v_a_max)
 
             # v = [v_{a,avg}; v_{a,max}; v_{b,avg}; v_{b_max}] (20)
-            v = tf.concat([v_a_avg, v_a_max, v_b_avg, v_b_max], axis = 1)
+            v = tf.concat([v_a_avg, v_a_max, v_b_avg, v_b_max], axis=1)
             print_shape('v', v)
             y_hat = self._feedForwardBlock(v, self.hidden_size, self.n_classes, 'feed_forward')
             return y_hat
